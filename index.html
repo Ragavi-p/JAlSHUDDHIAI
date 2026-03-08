@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JAL SHUDDHI AI – Smart Water Quality Monitoring</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ─── DESIGN TOKENS ──────────────────────────────────────── */
+    :root {
+      --bg-void:    #020d18;
+      --bg-deep:    #041525;
+      --bg-panel:   #061e35;
+      --bg-card:    #082a47;
+      --bg-glass:   rgba(8, 42, 71, 0.72);
+      --accent-bio:   #00f5d4;
+      --accent-glow:  #00c8ff;
+      --accent-safe:  #05ffa1;
+      --accent-warn:  #ffb703;
+      --accent-danger:#ff3c5a;
+      --accent-ph:    #38bdf8;
+      --accent-turb:  #c084fc;
+      --accent-tds:   #fb923c;
+      --accent-temp:  #f472b6;
+      --accent-hum:   #34d399;
+      --text-bright:  #e0f7ff;
+      --text-mid:     #7fb9d4;
+      --text-muted:   #3d6e8a;
+      --border-soft:  rgba(0,245,212,0.12);
+      --border-glow:  rgba(0,245,212,0.35);
+      --shadow-card:  0 8px 40px rgba(0,0,0,0.55);
+      --font-display: 'Orbitron', monospace;
+      --font-ui:      'Exo 2', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    /* ─── RESET & BASE ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-bright);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ─── ANIMATED BACKGROUND ────────────────────────────────── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; overflow: hidden;
+    }
+
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,245,212,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,212,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridDrift 30s linear infinite;
+    }
+    @keyframes gridDrift {
+      from { transform: translate(0,0); }
+      to   { transform: translate(48px, 48px); }
+    }
+
+    .bg-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(80px); opacity: 0.15;
+      animation: orbFloat 18s ease-in-out infinite alternate;
+    }
+    .bg-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #00f5d4, transparent); top: -200px; left: -150px; animation-delay: 0s; }
+    .bg-orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #00c8ff, transparent); bottom: -100px; right: -100px; animation-delay: -6s; }
+    .bg-orb-3 { width: 350px; height: 350px; background: radial-gradient(circle, #0ea5e9, transparent); top: 40%; left: 40%; animation-delay: -12s; opacity: 0.08; }
+
+    @keyframes orbFloat {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.15); }
+    }
+
+    /* Water ripple lines */
+    .water-lines {
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 118px,
+        rgba(0,245,212,0.018) 120px
+      );
+      animation: waterShift 8s ease-in-out infinite alternate;
+    }
+    @keyframes waterShift {
+      from { background-position: 0 0; }
+      to   { background-position: 0 20px; }
+    }
+
+    /* ─── LAYOUT WRAPPER ────────────────────────────────────── */
+    .app-wrap { position: relative; z-index: 1; }
+
+    /* ─── HEADER ─────────────────────────────────────────────── */
+    .site-header {
+      background: linear-gradient(180deg, rgba(2,13,24,0.98) 0%, rgba(4,21,37,0.92) 100%);
+      border-bottom: 1px solid var(--border-glow);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 0 28px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 4px 60px rgba(0,0,0,0.5), 0 1px 0 rgba(0,245,212,0.2);
+    }
+
+    .header-inner {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap; gap: 14px;
+      max-width: 1800px; margin: 0 auto;
+      padding: 14px 0;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .brand-icon-ring {
+      position: relative; width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .brand-icon-ring::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--accent-bio);
+      animation: ringPulse 2.4s ease-in-out infinite;
+      box-shadow: 0 0 16px var(--accent-bio);
+    }
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50%       { transform: scale(1.18); opacity: 0.25; }
+    }
+    .brand-icon-inner {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent-bio), var(--accent-glow));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--bg-void);
+      box-shadow: 0 0 20px rgba(0,245,212,0.5);
+    }
+
+    .brand-copy h1 {
+      font-family: var(--font-display);
+      font-size: clamp(14px, 2.4vw, 22px);
+      font-weight: 900;
+      color: var(--accent-bio);
+      letter-spacing: 3px;
+      text-shadow: 0 0 24px rgba(0,245,212,0.6);
+      line-height: 1.1;
+    }
+    .brand-copy .tagline {
+      font-family: var(--font-ui);
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 5px; text-transform: uppercase;
+      color: var(--text-mid); margin-top: 2px;
+    }
+
+    /* Header right cluster */
+    .header-right {
+      display: flex; align-items: center;
+      gap: 16px; flex-wrap: wrap;
+    }
+
+    .pill {
+      display: flex; align-items: center; gap: 8px;
+      border-radius: 100px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 16px;
+    }
+    .pill-live {
+      background: rgba(5,255,161,0.08);
+      border: 1px solid rgba(5,255,161,0.3);
+      color: var(--accent-safe);
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--accent-safe);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-safe);
+      animation: liveBlink 1.2s ease-in-out infinite;
+    }
+    @keyframes liveBlink {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.4; transform:scale(0.75); }
+    }
+
+    .pill-time {
+      background: rgba(0,200,255,0.07);
+      border: 1px solid rgba(0,200,255,0.2);
+      color: var(--accent-glow);
+    }
+
+    .status-bar-strip {
+      display: flex; align-items: center;
+      gap: 6px; font-size: 11px; font-family: var(--font-mono);
+      color: var(--text-mid);
+    }
+    .status-ping { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-bio); box-shadow: 0 0 6px var(--accent-bio); animation: liveBlink 1s ease-in-out infinite; }
+
+    /* ─── MAIN CONTENT ───────────────────────────────────────── */
+    .main { max-width: 1800px; margin: 0 auto; padding: 24px 20px 40px; }
+
+    /* Section labels */
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border-soft), transparent);
+    }
+    .section-label i { color: var(--accent-bio); font-size: 12px; }
+
+    /* ─── SENSOR CARDS ───────────────────────────────────────── */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px; margin-bottom: 20px;
+    }
+    @media (max-width: 1200px) { .sensor-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px)  { .sensor-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px)  { .sensor-grid { grid-template-columns: 1fr 1fr; } }
+
+    .sensor-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-soft);
+      border-radius: 18px;
+      padding: 20px 18px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      cursor: default;
+    }
+    .sensor-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,245,212,0.08);
+    }
+
+    /* Top accent bar */
+    .sensor-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--c);
+      box-shadow: 0 0 10px var(--c);
+    }
+    /* Corner glow blob */
+    .sensor-card::after {
+      content: '';
+      position: absolute; top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, var(--c), transparent 65%);
+      opacity: 0.12; pointer-events: none;
+    }
+
+    .sc-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .sc-icon {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--c);
+    }
+    .sc-badge {
+      font-size: 9px; font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 100px;
+      border: 1px solid; transition: all 0.4s ease;
+    }
+    .sc-badge.safe   { color: var(--accent-safe);   border-color: rgba(5,255,161,0.4);  background: rgba(5,255,161,0.08); }
+    .sc-badge.warn   { color: var(--accent-warn);   border-color: rgba(255,183,3,0.4);  background: rgba(255,183,3,0.08); }
+    .sc-badge.danger { color: var(--accent-danger); border-color: rgba(255,60,90,0.4);  background: rgba(255,60,90,0.08); animation: dangerFlash 1s ease-in-out infinite; }
+
+    @keyframes dangerFlash {
+      0%,100% { opacity:1; } 50% { opacity:0.5; }
+    }
+
+    .sc-name {
+      font-family: var(--font-ui);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 4px;
+    }
+    .sc-value {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 900;
+      color: var(--c);
+      text-shadow: 0 0 18px var(--c);
+      line-height: 1;
+      transition: all 0.5s cubic-bezier(.17,.67,.3,1.1);
+    }
+    .sc-unit {
+      font-family: var(--font-ui);
+      font-size: 12px; font-weight: 600;
+      color: var(--text-mid); margin-left: 4px;
+    }
+
+    /* Progress track */
+    .sc-track {
+      height: 4px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; margin-top: 14px; overflow: hidden;
+    }
+    .sc-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 60%, white));
+      box-shadow: 0 0 8px var(--c);
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* Sub-text */
+    .sc-foot {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-top: 8px;
+      font-size: 10px; font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* Value flash animation */
+    @keyframes valueFlash {
+      0%  { opacity:1; transform:scale(1); }
+      30% { opacity:0.5; transform:scale(1.06); color: white; }
+      100%{ opacity:1; transform:scale(1); }
+    }
+    .flash { animation: valueFlash 0.45s ease; }
+
+    /* ─── MIDDLE ROW ──────────────────────────────────────────── */
+    .mid-row {
+      display: grid;
+      grid-template-columns: 280px 1fr 1fr;
+      gap: 16px; margin-bottom: 20px;
+    }
+    @media (max-width: 1100px) { .mid-row { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px)  { .mid-row { grid-template-columns: 1fr; } }
+
+    /* ─── PANEL BASE ─────────────────────────────────────────── */
+    .panel {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-soft);
+      border-radius: 18px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 22px;
+      box-shadow: var(--shadow-card);
+      transition: box-shadow 0.3s ease;
+      position: relative; overflow: hidden;
+    }
+    .panel:hover { box-shadow: 0 12px 60px rgba(0,0,0,0.6), 0 0 40px rgba(0,245,212,0.05); }
+
+    /* ─── GAUGE PANEL ────────────────────────────────────────── */
+    .gauge-panel {
+      display: flex; flex-direction: column;
+      align-items: center;
+    }
+    .gauge-wrap {
+      position: relative; width: 190px; height: 190px;
+      margin: 0 auto 6px;
+    }
+    .gauge-wrap canvas { width: 100%!important; height: 100%!important; }
+    .gauge-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transform: translateY(10px);
+    }
+    .gauge-score {
+      font-family: var(--font-display);
+      font-size: 42px; font-weight: 900;
+      line-height: 1;
+      transition: color 0.6s ease, text-shadow 0.6s ease;
+    }
+    .gauge-of {
+      font-family: var(--font-ui);
+      font-size: 11px; color: var(--text-muted);
+      letter-spacing: 2px;
+    }
+
+    .gauge-verdict {
+      font-family: var(--font-display);
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      margin-top: 4px; margin-bottom: 16px;
+      transition: color 0.6s ease;
+    }
+
+    /* Mini stats below gauge */
+    .gauge-stats {
+      width: 100%;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .gs-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 9px 14px;
+    }
+    .gs-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
+    .gs-val   { font-family: var(--font-mono); font-size: 12px; color: var(--text-bright); }
+
+    /* ─── AI PANEL ────────────────────────────────────────────── */
+    .ai-panel-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px;
+    }
+    .ai-engine-tag {
+      font-family: var(--font-mono); font-size: 9px;
+      letter-spacing: 2px; color: var(--accent-bio);
+      background: rgba(0,245,212,0.08);
+      border: 1px solid rgba(0,245,212,0.2);
+      border-radius: 4px; padding: 3px 8px;
+    }
+
+    .ai-status-block {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      border: 1px solid;
+      transition: all 0.6s ease;
+    }
+    .ai-status-block.safe   { background: rgba(5,255,161,0.07); border-color: rgba(5,255,161,0.25); }
+    .ai-status-block.warn   { background: rgba(255,183,3,0.07);  border-color: rgba(255,183,3,0.25);  }
+    .ai-status-block.danger { background: rgba(255,60,90,0.07);  border-color: rgba(255,60,90,0.25);  animation: dangerPanelPulse 2s ease-in-out infinite; }
+
+    @keyframes dangerPanelPulse {
+      0%,100% { box-shadow: none; }
+      50%      { box-shadow: 0 0 25px rgba(255,60,90,0.2); }
+    }
+
+    .ai-status-icon {
+      font-size: 30px;
+      transition: color 0.5s ease;
+    }
+    .ai-status-title {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 900;
+      letter-spacing: 2px; text-transform: uppercase;
+      transition: color 0.5s ease;
+    }
+    .ai-status-sub {
+      font-family: var(--font-ui); font-size: 11px;
+      color: var(--text-mid); margin-top: 2px;
+      transition: all 0.5s ease;
+    }
+
+    .ai-message {
+      font-family: var(--font-ui);
+      font-size: 13px; line-height: 1.65;
+      color: var(--text-mid);
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      border-left: 3px solid var(--accent-bio);
+      margin-bottom: 16px;
+      transition: border-color 0.5s ease;
+      min-height: 60px;
+    }
+
+    /* AI param rows */
+    .ai-params { display: flex; flex-direction: column; gap: 7px; }
+    .ai-param-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      background: rgba(255,255,255,0.025);
+      border-radius: 8px;
+      font-family: var(--font-ui); font-size: 12px;
+    }
+    .ap-left { display: flex; align-items: center; gap: 8px; color: var(--text-mid); }
+    .ap-left i { font-size: 14px; }
+    .ap-badge {
+      font-family: var(--font-mono); font-size: 9px;
+      font-weight: 700; letter-spacing: 1px;
+      padding: 2px 8px; border-radius: 100px;
+      transition: all 0.4s ease;
+    }
+    .ap-badge.ok  { color:#05ffa1; background:rgba(5,255,161,0.1); }
+    .ap-badge.mid { color:#ffb703; background:rgba(255,183,3,0.1); }
+    .ap-badge.bad { color:#ff3c5a; background:rgba(255,60,90,0.1); }
+
+    /* Loading spinner */
+    .ai-loading {
+      display: none; align-items: center; gap: 10px;
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--accent-bio); margin-bottom: 14px;
+    }
+    .ai-loading.show { display: flex; }
+    .ai-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,245,212,0.2);
+      border-top-color: var(--accent-bio);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── MAP PANEL ───────────────────────────────────────────── */
+    .city-tabs {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .city-tab {
+      font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+      letter-spacing: 1px; padding: 7px 16px;
+      border-radius: 8px; border: 1px solid var(--border-soft);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-mid); cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .city-tab:hover, .city-tab.active {
+      background: rgba(0,245,212,0.12);
+      border-color: rgba(0,245,212,0.45);
+      color: var(--accent-bio);
+      box-shadow: 0 0 14px rgba(0,245,212,0.12);
+    }
+
+    .map-frame-wrap {
+      border-radius: 12px; overflow: hidden;
+      height: 260px; border: 1px solid var(--border-soft);
+      position: relative;
+    }
+    .map-frame-wrap iframe {
+      width: 100%; height: 100%;
+      border: none; display: block;
+      filter: hue-rotate(180deg) saturate(0.7) invert(0.85);
+      transition: opacity 0.4s ease;
+    }
+    .map-overlay-tag {
+      position: absolute; bottom: 10px; left: 10px;
+      background: rgba(2,13,24,0.88);
+      border: 1px solid var(--border-glow);
+      border-radius: 8px; padding: 5px 12px;
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--accent-bio); letter-spacing: 1px;
+    }
+
+    /* ─── TREND CHART ROW ─────────────────────────────────────── */
+    .trend-row { margin-bottom: 20px; }
+    .trend-panel-inner { position: relative; height: 280px; }
+
+    .chart-legend {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      margin-top: 14px; justify-content: center;
+    }
+    .cl-item {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-ui); font-size: 11px;
+      font-weight: 600; color: var(--text-mid);
+    }
+    .cl-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* ─── BOTTOM STATS ROW ─────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 20px;
+    }
+    @media (max-width: 900px)  { .stats-row { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 500px)  { .stats-row { grid-template-columns: 1fr 1fr; } }
+
+    .stat-tile {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease;
+    }
+    .stat-tile:hover { transform: translateY(-2px); }
+    .st-icon {
+      font-size: 22px; color: var(--accent-bio);
+      flex-shrink: 0;
+    }
+    .st-label { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); }
+    .st-val   { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-bright); }
+
+    /* ─── FOOTER ─────────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--border-soft);
+      background: rgba(2,13,24,0.9);
+      padding: 16px 28px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+      font-family: var(--font-ui); font-size: 11px;
+      color: var(--text-muted);
+    }
+    .site-footer strong { font-family: var(--font-display); font-size: 10px; letter-spacing: 2px; color: var(--accent-bio); }
+
+    /* ─── SCROLLBAR ──────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-void); }
+    ::-webkit-scrollbar-thumb { background: var(--accent-bio); border-radius: 3px; opacity: 0.5; }
+
+    /* ─── STAGGERED ENTRANCE ─────────────────────────────────── */
+    .fade-up {
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity:1; transform:translateY(0); }
+    }
+    .sensor-card:nth-child(1) { animation-delay: 0.05s; }
+    .sensor-card:nth-child(2) { animation-delay: 0.10s; }
+    .sensor-card:nth-child(3) { animation-delay: 0.15s; }
+    .sensor-card:nth-child(4) { animation-delay: 0.20s; }
+    .sensor-card:nth-child(5) { animation-delay: 0.25s; }
+
+    /* ─── RESPONSIVE TWEAKS ──────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .mid-row .panel:nth-child(1) { order: 1; }
+      .mid-row .panel:nth-child(2) { order: 2; }
+      .mid-row .panel:nth-child(3) { order: 3; grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ANIMATED BG -->
+<div class="bg-canvas">
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="water-lines"></div>
+</div>
+
+<div class="app-wrap">
+
+  <!-- ═══ HEADER ══════════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon-ring">
+          <div class="brand-icon-inner">
+            <i class="bi bi-droplet-fill"></i>
+          </div>
+        </div>
+        <div class="brand-copy">
+          <h1>JAL SHUDDHI AI</h1>
+          <div class="tagline">Predict &nbsp;·&nbsp; Prevent &nbsp;·&nbsp; Protect</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="status-bar-strip d-none d-md-flex">
+          <div class="status-ping"></div>
+          <span>SENSORS ONLINE</span>
+          <span style="color:var(--text-muted)">|</span>
+          <span id="sensorCount">5/5</span>
+          <span style="color:var(--text-muted)">ACTIVE</span>
+        </div>
+        <div class="pill pill-live">
+          <div class="live-dot"></div>
+          LIVE MONITORING
+        </div>
+        <div class="pill pill-time">
+          <i class="bi bi-clock"></i>
+          <span id="liveTime">00:00:00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN ═════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- SECTION: SENSORS -->
+    <div class="section-label"><i class="bi bi-cpu-fill"></i> Real-Time Sensor Feed — Auto-refresh every 5s</div>
+    <div class="sensor-grid">
+
+      <!-- pH -->
+      <div class="sensor-card fade-up" style="--c: var(--accent-ph)" id="card-ph">
+        <div class="sc-header">
+          <div class="sc-icon"><i class="bi bi-eyedropper-fill"></i></div>
+          <div class="sc-badge safe" id="badge-ph">SAFE</div>
+        </div>
+        <div class="sc-name">pH Level</div>
+        <div>
+          <span class="sc-value" id="val-ph">7.2</span>
+          <span class="sc-unit">pH</span>
+        </div>
+        <div class="sc-track"><div class="sc-fill" id="fill-ph" style="width:60%"></div></div>
+        <div class="sc-foot">
+          <span>Range: 6.5 – 8.5</span>
+          <span id="delta-ph">±0.0</span>
+        </div>
+      </div>
+
+      <!-- Turbidity -->
+      <div class="sensor-card fade-up" style="--c: var(--accent-turb)" id="card-turb">
+        <div class="sc-header">
+          <div class="sc-icon"><i class="bi bi-water"></i></div>
+          <div class="sc-badge safe" id="badge-turb">CLEAR</div>
+        </div>
+        <div class="sc-name">Turbidity</div>
+        <div>
+          <span class="sc-value" id="val-turb">2.4</span>
+          <span class="sc-unit">NTU</span>
+        </div>
+        <div class="sc-track"><div class="sc-fill" id="fill-turb" style="width:24%"></div></div>
+        <div class="sc-foot">
+          <span>Safe: &lt; 4 NTU</span>
+          <span id="delta-turb">±0.0</span>
+        </div>
+      </div>
+
+      <!-- TDS -->
+      <div class="sensor-card fade-up" style="--c: var(--accent-tds)" id="card-tds">
+        <div class="sc-header">
+          <div class="sc-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+          <div class="sc-badge safe" id="badge-tds">NORMAL</div>
+        </div>
+        <div class="sc-name">TDS</div>
+        <div>
+          <span class="sc-value" id="val-tds">320</span>
+          <span class="sc-unit">ppm</span>
+        </div>
+        <div class="sc-track"><div class="sc-fill" id="fill-tds" style="width:32%"></div></div>
+        <div class="sc-foot">
+          <span>Safe: &lt; 500 ppm</span>
+          <span id="delta-tds">±0.0</span>
+        </div>
+      </div>
+
+      <!-- Temperature -->
+      <div class="sensor-card fade-up" style="--c: var(--accent-temp)" id="card-temp">
+        <div class="sc-header">
+          <div class="sc-icon"><i class="bi bi-thermometer-half"></i></div>
+          <div class="sc-badge safe" id="badge-temp">NORMAL</div>
+        </div>
+        <div class="sc-name">Temperature</div>
+        <div>
+          <span class="sc-value" id="val-temp">27.4</span>
+          <span class="sc-unit">°C</span>
+        </div>
+        <div class="sc-track"><div class="sc-fill" id="fill-temp" style="width:55%"></div></div>
+        <div class="sc-foot">
+          <span>Ideal: 20 – 35 °C</span>
+          <span id="delta-temp">±0.0</span>
+        </div>
+      </div>
+
+      <!-- Humidity -->
+      <div class="sensor-card fade-up" style="--c: var(--accent-hum)" id="card-hum">
+        <div class="sc-header">
+          <div class="sc-icon"><i class="bi bi-moisture"></i></div>
+          <div class="sc-badge safe" id="badge-hum">NORMAL</div>
+        </div>
+        <div class="sc-name">Humidity</div>
+        <div>
+          <span class="sc-value" id="val-hum">65</span>
+          <span class="sc-unit">%</span>
+        </div>
+        <div class="sc-track"><div class="sc-fill" id="fill-hum" style="width:65%"></div></div>
+        <div class="sc-foot">
+          <span>Ideal: 40 – 80 %</span>
+          <span id="delta-hum">±0.0</span>
+        </div>
+      </div>
+
+    </div><!-- /sensor-grid -->
+
+    <!-- SECTION: MIDDLE ROW -->
+    <div class="section-label"><i class="bi bi-bar-chart-line-fill"></i> Intelligence & Insights</div>
+    <div class="mid-row">
+
+      <!-- GAUGE: Water Health Score -->
+      <div class="panel gauge-panel">
+        <div class="section-label" style="margin-bottom:10px; font-size:8px;"><i class="bi bi-droplet-half"></i> Water Health Score</div>
+        <div class="gauge-wrap">
+          <canvas id="gaugeChart"></canvas>
+          <div class="gauge-center">
+            <div class="gauge-score" id="gaugeScore" style="color:var(--accent-safe); text-shadow:0 0 24px var(--accent-safe)">84</div>
+            <div class="gauge-of">/ 100</div>
+          </div>
+        </div>
+        <div class="gauge-verdict" id="gaugeVerdict" style="color:var(--accent-safe)">EXCELLENT</div>
+        <div class="gauge-stats">
+          <div class="gs-row">
+            <span class="gs-label"><i class="bi bi-arrow-up-right"></i> Trend</span>
+            <span class="gs-val" id="gsTrend">Stable →</span>
+          </div>
+          <div class="gs-row">
+            <span class="gs-label"><i class="bi bi-clock"></i> Updated</span>
+            <span class="gs-val" id="gsUpdated">--:--:--</span>
+          </div>
+          <div class="gs-row">
+            <span class="gs-label"><i class="bi bi-broadcast"></i> Points</span>
+            <span class="gs-val" id="gsPoints">20</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI PREDICTION PANEL -->
+      <div class="panel">
+        <div class="ai-panel-header">
+          <div class="section-label" style="margin:0; font-size:8px; flex:1;"><i class="bi bi-robot"></i> AI Prediction Engine</div>
+          <div class="ai-engine-tag">v2.4 NEURAL</div>
+        </div>
+
+        <div class="ai-loading" id="aiLoading">
+          <div class="ai-spinner"></div>
+          ANALYZING SENSOR MATRIX…
+        </div>
+
+        <div class="ai-status-block safe" id="aiBlock">
+          <div class="ai-status-icon" id="aiIcon" style="color:var(--accent-safe)">
+            <i class="bi bi-shield-fill-check"></i>
+          </div>
+          <div>
+            <div class="ai-status-title" id="aiTitle" style="color:var(--accent-safe)">SAFE WATER</div>
+            <div class="ai-status-sub" id="aiSub">All parameters nominal</div>
+          </div>
+        </div>
+
+        <div class="ai-message" id="aiMsg">
+          All monitored parameters are within optimal range. Water is safe for consumption and domestic use. No remediation required. Continue periodic monitoring as scheduled.
+        </div>
+
+        <div class="ai-params">
+          <div class="ai-param-row">
+            <div class="ap-left"><i class="bi bi-eyedropper-fill" style="color:var(--accent-ph)"></i> pH Level</div>
+            <span class="ap-badge ok" id="ap-ph">OPTIMAL</span>
+          </div>
+          <div class="ai-param-row">
+            <div class="ap-left"><i class="bi bi-water" style="color:var(--accent-turb)"></i> Turbidity</div>
+            <span class="ap-badge ok" id="ap-turb">CLEAR</span>
+          </div>
+          <div class="ai-param-row">
+            <div class="ap-left"><i class="bi bi-lightning-charge-fill" style="color:var(--accent-tds)"></i> TDS</div>
+            <span class="ap-badge ok" id="ap-tds">NORMAL</span>
+          </div>
+          <div class="ai-param-row">
+            <div class="ap-left"><i class="bi bi-thermometer-half" style="color:var(--accent-temp)"></i> Temperature</div>
+            <span class="ap-badge ok" id="ap-temp">NORMAL</span>
+          </div>
+          <div class="ai-param-row">
+            <div class="ap-left"><i class="bi bi-moisture" style="color:var(--accent-hum)"></i> Humidity</div>
+            <span class="ap-badge ok" id="ap-hum">NORMAL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAP PANEL -->
+      <div class="panel">
+        <div class="section-label" style="margin-bottom:12px; font-size:8px;"><i class="bi bi-geo-alt-fill"></i> Monitoring Location — Tamil Nadu Grid</div>
+        <div class="city-tabs" id="cityTabs">
+          <button class="city-tab active" onclick="setCity('chennai',this)"><i class="bi bi-geo-fill me-1"></i>Chennai</button>
+          <button class="city-tab" onclick="setCity('coimbatore',this)"><i class="bi bi-geo-fill me-1"></i>Coimbatore</button>
+          <button class="city-tab" onclick="setCity('madurai',this)"><i class="bi bi-geo-fill me-1"></i>Madurai</button>
+          <button class="city-tab" onclick="setCity('trichy',this)"><i class="bi bi-geo-fill me-1"></i>Trichy</button>
+        </div>
+        <div class="map-frame-wrap">
+          <iframe id="mapIframe"
+            src="https://maps.google.com/maps?q=Chennai,Tamil+Nadu,India&z=12&output=embed"
+            allowfullscreen loading="lazy"></iframe>
+          <div class="map-overlay-tag"><i class="bi bi-broadcast me-1"></i><span id="mapCityTag">Chennai</span> · ACTIVE NODE</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px;">
+          <span style="font-family:var(--font-ui);font-size:11px;color:var(--text-mid);">
+            <i class="bi bi-pin-map-fill me-1" style="color:var(--accent-bio)"></i>
+            <span id="cityFullName">Chennai, Tamil Nadu</span>
+          </span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);" id="cityCoords">13.0827°N · 80.2707°E</span>
+        </div>
+      </div>
+
+    </div><!-- /mid-row -->
+
+    <!-- SECTION: TREND CHART -->
+    <div class="section-label"><i class="bi bi-activity"></i> Live Sensor Trend — Rolling 20-Point Window</div>
+    <div class="trend-row">
+      <div class="panel">
+        <div class="trend-panel-inner">
+          <canvas id="trendChart"></canvas>
+        </div>
+        <div class="chart-legend">
+          <div class="cl-item"><div class="cl-dot" style="color:var(--accent-ph);background:var(--accent-ph)"></div> pH Level</div>
+          <div class="cl-item"><div class="cl-dot" style="color:var(--accent-turb);background:var(--accent-turb)"></div> Turbidity (NTU)</div>
+          <div class="cl-item"><div class="cl-dot" style="color:var(--accent-tds);background:var(--accent-tds)"></div> TDS ÷10 (ppm)</div>
+          <div class="cl-item"><div class="cl-dot" style="color:var(--accent-temp);background:var(--accent-temp)"></div> Temperature (°C)</div>
+          <div class="cl-item"><div class="cl-dot" style="color:var(--accent-hum);background:var(--accent-hum)"></div> Humidity ÷10 (%)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: STAT TILES -->
+    <div class="section-label"><i class="bi bi-grid-3x3-gap-fill"></i> System Overview</div>
+    <div class="stats-row">
+      <div class="stat-tile">
+        <i class="bi bi-hdd-network-fill st-icon"></i>
+        <div><div class="st-label">Monitoring Nodes</div><div class="st-val">4</div></div>
+      </div>
+      <div class="stat-tile">
+        <i class="bi bi-reception-4 st-icon"></i>
+        <div><div class="st-label">Network Status</div><div class="st-val" style="color:var(--accent-safe);font-size:14px;">ONLINE</div></div>
+      </div>
+      <div class="stat-tile">
+        <i class="bi bi-database-fill-check st-icon"></i>
+        <div><div class="st-label">Data Points Today</div><div class="st-val" id="totalPoints">0</div></div>
+      </div>
+      <div class="stat-tile">
+        <i class="bi bi-shield-check st-icon"></i>
+        <div><div class="st-label">Alerts Raised</div><div class="st-val" id="alertCount" style="color:var(--accent-safe)">0</div></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══ FOOTER ════════════════════════════════════════════════ -->
+  <footer class="site-footer">
+    <div>
+      <strong>JAL SHUDDHI AI</strong> &nbsp;·&nbsp; Smart Water Quality Monitoring System &nbsp;·&nbsp; Tamil Nadu Grid
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      <span>Refresh interval: <strong style="color:var(--accent-bio);font-family:var(--font-mono)">5s</strong></span>
+      <span>Protocol: <strong style="color:var(--accent-bio);font-family:var(--font-mono)">MQTT / IoT Sim</strong></span>
+      <span style="color:var(--text-muted)">© 2025 JAL SHUDDHI AI · All Rights Reserved</span>
+    </div>
+  </footer>
+
+</div><!-- /app-wrap -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   JAL SHUDDHI AI — Dashboard Logic
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── STATE ────────────────────────────────────────────────── */
+let state = {
+  ph:   7.2,
+  turb: 2.4,
+  tds:  320,
+  temp: 27.4,
+  hum:  65,
+};
+let prevState   = { ...state };
+let prevScore   = 84;
+let cycle       = 0;
+let alertsTotal = 0;
+let pointsToday = 20;
+
+/* ─── CLOCK ─────────────────────────────────────────────────── */
+function tick() {
+  const n = new Date();
+  const pad = v => String(v).padStart(2,'0');
+  document.getElementById('liveTime').textContent =
+    `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  document.getElementById('gsUpdated').textContent =
+    `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+}
+setInterval(tick, 1000); tick();
+
+/* ─── SCORE ─────────────────────────────────────────────────── */
+function calcScore(s) {
+  let sc = 100;
+  const ph = s.ph;
+  if (ph < 6.5 || ph > 8.5)        sc -= 28;
+  else if (ph < 7.0 || ph > 8.0)   sc -= 8;
+
+  if (s.turb > 10)       sc -= 28;
+  else if (s.turb > 4)   sc -= 14;
+
+  if (s.tds > 1000)      sc -= 22;
+  else if (s.tds > 500)  sc -= 11;
+
+  if (s.temp > 40 || s.temp < 5)   sc -= 10;
+  else if (s.temp > 35)             sc -= 4;
+
+  if (s.hum > 90 || s.hum < 20)    sc -= 6;
+
+  return Math.max(0, Math.min(100, Math.round(sc)));
+}
+
+/* ─── GAUGE CHART ────────────────────────────────────────────── */
+const gCtx = document.getElementById('gaugeChart').getContext('2d');
+const gaugeChart = new Chart(gCtx, {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [84, 16],
+      backgroundColor: ['#05ffa1', 'rgba(255,255,255,0.05)'],
+      borderWidth: 0,
+      borderRadius: [6, 0],
+    }]
+  },
+  options: {
+    cutout: '78%',
+    rotation: -125,
+    circumference: 250,
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    animation: { duration: 700, easing: 'easeInOutCubic' }
+  }
+});
+
+function updateGauge(score) {
+  const col = score >= 75 ? '#05ffa1' : score >= 45 ? '#ffb703' : '#ff3c5a';
+  gaugeChart.data.datasets[0].data = [score, 100 - score];
+  gaugeChart.data.datasets[0].backgroundColor = [col, 'rgba(255,255,255,0.05)'];
+  gaugeChart.update('active');
+
+  const el = document.getElementById('gaugeScore');
+  el.textContent = score;
+  el.style.color       = col;
+  el.style.textShadow  = `0 0 24px ${col}`;
+
+  const verdicts = { 75:'EXCELLENT', 60:'GOOD', 45:'MODERATE', 25:'POOR', 0:'CRITICAL' };
+  const vLabel   = score >= 75 ? 'EXCELLENT' : score >= 60 ? 'GOOD' : score >= 45 ? 'MODERATE' : score >= 25 ? 'POOR' : 'CRITICAL';
+  const vEl = document.getElementById('gaugeVerdict');
+  vEl.textContent = vLabel;
+  vEl.style.color = col;
+
+  document.getElementById('gsTrend').textContent =
+    score > prevScore ? '↑ Improving' : score < prevScore ? '↓ Declining' : '→ Stable';
+}
+
+/* ─── TREND CHART ────────────────────────────────────────────── */
+const MAX_PT = 20;
+const emptyArr = () => Array.from({ length: MAX_PT }, () => null);
+
+const tCtx = document.getElementById('trendChart').getContext('2d');
+const trendData = {
+  ph:   Array.from({length:MAX_PT}, () => +(6.9 + Math.random()*1.2).toFixed(2)),
+  turb: Array.from({length:MAX_PT}, () => +(1.2 + Math.random()*3.2).toFixed(2)),
+  tds:  Array.from({length:MAX_PT}, () => +((270 + Math.random()*90)/10).toFixed(2)),
+  temp: Array.from({length:MAX_PT}, () => +(24 + Math.random()*6).toFixed(2)),
+  hum:  Array.from({length:MAX_PT}, () => +((55 + Math.random()*25)/10).toFixed(2)),
+};
+const tLabels = Array.from({length:MAX_PT}, (_,i) => '');
+
+const trendChart = new Chart(tCtx, {
+  type: 'line',
+  data: {
+    labels: tLabels,
+    datasets: [
+      makeDS('pH',         trendData.ph,   '#38bdf8'),
+      makeDS('Turbidity',  trendData.turb, '#c084fc'),
+      makeDS('TDS÷10',     trendData.tds,  '#fb923c'),
+      makeDS('Temp',       trendData.temp, '#f472b6'),
+      makeDS('Hum÷10',     trendData.hum,  '#34d399'),
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(2,13,24,0.95)',
+        borderColor: 'rgba(0,245,212,0.3)',
+        borderWidth: 1,
+        titleColor: '#00f5d4',
+        bodyColor: '#7fb9d4',
+        padding: 12,
+        titleFont: { family: 'JetBrains Mono', size: 10 },
+        bodyFont:  { family: 'Exo 2', size: 12 },
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(0,245,212,0.05)' },
+        ticks: { display: false }
+      },
+      y: {
+        grid: { color: 'rgba(0,245,212,0.06)', drawBorder: false },
+        ticks: {
+          color: '#3d6e8a',
+          font: { family: 'JetBrains Mono', size: 9 },
+          maxTicksLimit: 6,
+        },
+        border: { display: false }
+      }
+    },
+    elements: {
+      point: { radius: 0, hoverRadius: 4 }
+    }
+  }
+});
+
+function makeDS(label, data, color) {
+  return {
+    label, data,
+    borderColor: color,
+    backgroundColor: color + '18',
+    borderWidth: 2,
+    tension: 0.45,
+    fill: false,
+  };
+}
+
+function pushTrend(s) {
+  trendChart.data.datasets[0].data.push(+s.ph.toFixed(2));
+  trendChart.data.datasets[1].data.push(+s.turb.toFixed(2));
+  trendChart.data.datasets[2].data.push(+(s.tds/10).toFixed(2));
+  trendChart.data.datasets[3].data.push(+s.temp.toFixed(2));
+  trendChart.data.datasets[4].data.push(+(s.hum/10).toFixed(2));
+  trendChart.data.labels.push('');
+
+  if (trendChart.data.labels.length > MAX_PT) {
+    trendChart.data.labels.shift();
+    trendChart.data.datasets.forEach(d => d.data.shift());
+  }
+  trendChart.update('none');
+}
+
+/* ─── BADGE HELPERS ──────────────────────────────────────────── */
+function phBadge(v)   { return v>=6.5&&v<=8.5 ? ['safe','SAFE'] : v>=6&&v<=9 ? ['warn','CAUTION'] : ['danger','ALERT!']; }
+function turbBadge(v) { return v<=4  ? ['safe','CLEAR'] : v<=8  ? ['warn','CLOUDY'] : ['danger','TURBID']; }
+function tdsBadge(v)  { return v<=500? ['safe','NORMAL']: v<=800? ['warn','ELEVATED']:['danger','HIGH']; }
+function tempBadge(v) { return v<=35 ? ['safe','NORMAL']: v<=40 ? ['warn','WARM']   : ['danger','HOT']; }
+function humBadge(v)  { return v>=40&&v<=80?['safe','NORMAL']:v>=30&&v<=90?['warn','NOTICE']:['danger','EXTREME']; }
+
+function applyBadge(id, fn, val) {
+  const [cls, label] = fn(val);
+  const el = document.getElementById(id);
+  el.className = 'sc-badge ' + cls;
+  el.textContent = label;
+}
+
+function apTag(id, fn, val) {
+  const [cls, label] = fn(val);
+  const map = { safe:'ok', warn:'mid', danger:'bad' };
+  const el = document.getElementById(id);
+  el.className = 'ap-badge ' + map[cls];
+  el.textContent = label;
+}
+
+/* ─── SENSOR VALUE UPDATE ────────────────────────────────────── */
+function setVal(id, val, dp=1) {
+  const el = document.getElementById(id);
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.textContent = typeof val === 'number' ? val.toFixed(dp) : val;
+  el.classList.add('flash');
+}
+function setFill(id, pct) {
+  document.getElementById(id).style.width = Math.min(100, Math.max(2, pct)) + '%';
+}
+function setDelta(id, cur, prev) {
+  const d = cur - prev;
+  const el = document.getElementById(id);
+  el.textContent = (d >= 0 ? '+' : '') + d.toFixed(1);
+  el.style.color = Math.abs(d) < 0.5 ? '' : d > 0 ? '#05ffa1' : '#ff3c5a';
+}
+
+/* ─── AI PREDICTION ──────────────────────────────────────────── */
+function runAI(score, s) {
+  const loading = document.getElementById('aiLoading');
+  const block   = document.getElementById('aiBlock');
+  const icon    = document.getElementById('aiIcon');
+  const title   = document.getElementById('aiTitle');
+  const sub     = document.getElementById('aiSub');
+  const msg     = document.getElementById('aiMsg');
+
+  loading.classList.add('show');
+  block.style.opacity = '0.3';
+
+  setTimeout(() => {
+    loading.classList.remove('show');
+    block.style.opacity = '1';
+
+    let level, color, icn, titleTxt, subTxt, msgTxt;
+    let alerts = 0;
+
+    if (score >= 75) {
+      level = 'safe'; color = '#05ffa1';
+      icn   = 'bi-shield-fill-check';
+      titleTxt = 'SAFE WATER';
+      subTxt   = 'All parameters nominal';
+      msgTxt   = 'All monitored parameters are within optimal range. Water quality is excellent and safe for consumption, irrigation, and domestic use. Continue scheduled monitoring.';
+    } else if (score >= 45) {
+      level = 'warn'; color = '#ffb703';
+      icn   = 'bi-exclamation-triangle-fill';
+      titleTxt = 'MODERATE RISK';
+      subTxt   = 'One or more parameters require attention';
+      const issues = [];
+      if (s.ph<6.5||s.ph>8.5) issues.push('pH deviation');
+      if (s.turb>4)            issues.push('elevated turbidity');
+      if (s.tds>500)           issues.push('high TDS');
+      msgTxt = `⚠ Detected: ${issues.join(', ')||'borderline values'}. Water may be suitable for limited non-potable use. Treatment recommended before consumption. Recheck within 10 minutes.`;
+      alerts++;
+    } else {
+      level = 'danger'; color = '#ff3c5a';
+      icn   = 'bi-x-octagon-fill';
+      titleTxt = 'UNSAFE — DO NOT USE';
+      subTxt   = 'Critical contamination detected';
+      msgTxt   = '🚨 CRITICAL ALERT: Water quality is severely compromised. Immediate shutdown and remediation required. Do NOT consume or use for any purpose. Alert local authorities and water safety officers immediately.';
+      alerts += 2;
+    }
+
+    alertsTotal += alerts;
+    document.getElementById('alertCount').textContent = alertsTotal;
+    document.getElementById('alertCount').style.color = alertsTotal > 0 ? '#ffb703' : '#05ffa1';
+
+    block.className = 'ai-status-block ' + level;
+    icon.innerHTML  = `<i class="bi ${icn}"></i>`;
+    icon.style.color = color;
+    title.textContent = titleTxt;
+    title.style.color  = color;
+    sub.textContent   = subTxt;
+    msg.textContent   = msgTxt;
+    msg.style.borderColor = color;
+
+    // AP badges
+    apTag('ap-ph',   phBadge,   s.ph);
+    apTag('ap-turb', turbBadge, s.turb);
+    apTag('ap-tds',  tdsBadge,  s.tds);
+    apTag('ap-temp', tempBadge, s.temp);
+    apTag('ap-hum',  humBadge,  s.hum);
+
+  }, 750);
+}
+
+/* ─── MAIN UPDATE LOOP ────────────────────────────────────────── */
+function updateDashboard() {
+  prevState = { ...state };
+
+  // Simulate IoT sensor drift
+  state.ph   = clamp(state.ph   + jitter(0.13), 5.5, 9.5);
+  state.turb = clamp(state.turb + jitter(0.5),  0.1, 16);
+  state.tds  = clamp(state.tds  + jitter(18),   80,  1200);
+  state.temp = clamp(state.temp + jitter(0.35), 15,  45);
+  state.hum  = clamp(state.hum  + jitter(1.5),  15,  99);
+
+  // Sensor cards
+  setVal('val-ph',   state.ph,   1);
+  setVal('val-turb', state.turb, 1);
+  setVal('val-tds',  state.tds,  0);
+  setVal('val-temp', state.temp, 1);
+  setVal('val-hum',  state.hum,  0);
+
+  // Status bars
+  setFill('fill-ph',   ((state.ph - 5.5) / 4) * 100);
+  setFill('fill-turb', (state.turb / 16) * 100);
+  setFill('fill-tds',  (state.tds  / 1200) * 100);
+  setFill('fill-temp', ((state.temp - 15) / 30) * 100);
+  setFill('fill-hum',  state.hum);
+
+  // Badges
+  applyBadge('badge-ph',   phBadge,   state.ph);
+  applyBadge('badge-turb', turbBadge, state.turb);
+  applyBadge('badge-tds',  tdsBadge,  state.tds);
+  applyBadge('badge-temp', tempBadge, state.temp);
+  applyBadge('badge-hum',  humBadge,  state.hum);
+
+  // Deltas
+  setDelta('delta-ph',   state.ph,   prevState.ph);
+  setDelta('delta-turb', state.turb, prevState.turb);
+  setDelta('delta-tds',  state.tds,  prevState.tds);
+  setDelta('delta-temp', state.temp, prevState.temp);
+  setDelta('delta-hum',  state.hum,  prevState.hum);
+
+  // Score & gauge
+  const score = calcScore(state);
+  updateGauge(score);
+  prevScore = score;
+
+  // Trend
+  pushTrend(state);
+
+  // AI
+  if (cycle % 2 === 0) runAI(score, state);
+
+  // Stats
+  pointsToday += 5;
+  document.getElementById('totalPoints').textContent = pointsToday.toLocaleString();
+  document.getElementById('gsPoints').textContent = pointsToday.toLocaleString();
+
+  cycle++;
+}
+
+function jitter(max) { return (Math.random() - 0.48) * max * 2; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ─── MAP ────────────────────────────────────────────────────── */
+const CITIES = {
+  chennai:    { q:'Chennai,Tamil+Nadu,India',        name:'Chennai, Tamil Nadu',   coords:'13.0827°N · 80.2707°E', z:12 },
+  coimbatore: { q:'Coimbatore,Tamil+Nadu,India',     name:'Coimbatore, Tamil Nadu',coords:'11.0168°N · 76.9558°E', z:12 },
+  madurai:    { q:'Madurai,Tamil+Nadu,India',        name:'Madurai, Tamil Nadu',   coords:'9.9252°N · 78.1198°E',  z:12 },
+  trichy:     { q:'Tiruchirappalli,Tamil+Nadu,India',name:'Trichy, Tamil Nadu',    coords:'10.7905°N · 78.7047°E', z:12 },
+};
+
+function setCity(key, btn) {
+  document.querySelectorAll('.city-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const c = CITIES[key];
+  const frame = document.getElementById('mapIframe');
+  frame.style.opacity = '0.4';
+  frame.src = `https://maps.google.com/maps?q=${c.q}&z=${c.z}&output=embed`;
+  frame.onload = () => { frame.style.opacity = '1'; };
+  document.getElementById('mapCityTag').textContent = key.charAt(0).toUpperCase() + key.slice(1);
+  document.getElementById('cityFullName').textContent = c.name;
+  document.getElementById('cityCoords').textContent   = c.coords;
+}
+
+/* ─── BOOT ───────────────────────────────────────────────────── */
+updateDashboard();
+setInterval(updateDashboard, 5000);
+</script>
+</body>
+</html>
